@@ -13,6 +13,10 @@ client = openrouteservice.Client(key=API_KEY) # Specify your personal API key
 # https://github.com/gruns/furl
 #?? https://ask.openrouteservice.org/t/round-trip-request/1622
 #https://openrouteservice.org/dev/#/api-docs/introduction
+# https://github.com/louiezzang/vehicle-routing-optimization
+# Idea from here: Get the distance matrix for the stores first, then get the distance matrix from each store to it's customers, then get distance from  - Alan, help?
+
+# Layout - enter code
 takingInput = True
 addresses = ["1100 Soquel Ave, Santa Cruz, CA 95062"]
 startingLocation = input("Please enter your address (where you will be starting).\n")
