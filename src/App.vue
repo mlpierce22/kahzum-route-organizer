@@ -11,7 +11,7 @@
 
 <script lang="ts">
 import { Component, Vue, Watch } from "vue-property-decorator";
-import { setupAPIKey } from "./driver-routing.js";
+import { calculateRoute } from "./driver-routing.js";
 
 @Component({
   components: {}
@@ -83,21 +83,21 @@ export default class App extends Vue {
   ];
 
   mounted() {
-    const formVals = localStorage.getItem("formValues");
+    const formVals = sessionStorage.getItem("formValues");
     if (formVals) {
       this.formValues = JSON.parse(formVals);
     }
   }
 
   @Watch("formValues")
-  saveToLocalStorage() {
-    localStorage.setItem("formValues", JSON.stringify(this.formValues));
+  saveTosessionStorage() {
+    sessionStorage.setItem("formValues", JSON.stringify(this.formValues));
   }
 
   runRouting(data: any) {
     console.log("data: ", data);
-    setupAPIKey(data);
-    localStorage.removeItem("formValues");
+    calculateRoute(data);
+    sessionStorage.removeItem("formValues");
   }
 }
 </script>
