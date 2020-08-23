@@ -5,6 +5,7 @@
   // global wrapper styles
   display: flex;
   flex-direction: column;
+  align-items: center;
 
   .formulate-input-label {
     // global label styles
@@ -13,6 +14,7 @@
 
   .formulate-input-element {
     // Global field-level wrapper styles
+
   }
 
   .formulate-input-help {
@@ -31,6 +33,7 @@
 
   .formulate-input-group-item {
     // Group of items (like list of checkboxes) wrapper
+
   }
 
 // Text inputs
@@ -64,8 +67,12 @@
 // -----------------------------------------------------------------------------
 
 &[data-classification='button'] {
+  display: flex;
+  flex-direction: column;
   button {
     // Style button inputs
+    display: flex;
+    margin-left: auto;
   }
 }
 

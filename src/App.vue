@@ -4,6 +4,9 @@
       class="form"
       v-model="formValues"
       :schema="formSchema"
+      :errors="{
+        location: getLocErr()
+      }"
       @submit="runRouting"
     />
   </div>
@@ -18,10 +21,21 @@ import { calculateRoute } from "./driver-routing.js";
 })
 export default class App extends Vue {
   formValues = {};
+  locationError = false;
+  userCoordinates = [];
   formSchema = [
     {
       component: "h1",
       children: "Kahzum Route Organizer"
+    },
+    {
+      component: "h2",
+      children: "Your API Key"
+    },
+    {
+      component: "p",
+      children:
+        "API key can be found at openrouteservice (https://openrouteservice.org/dev/#/home)"
     },
     {
       type: "text",
@@ -31,6 +45,33 @@ export default class App extends Vue {
         required: "You must enter an API key."
       },
       label: "Please enter your API key."
+    },
+    {
+      component: "h2",
+      children: "Your location."
+    },
+    {
+      component: "p",
+      children:
+        "Please enter your location, or allow us to get it automatically via gps."
+    },
+    {
+      type: "button",
+      name: "location",
+      label: "Get My Location",
+      on: {
+        click: () => {
+          this.getLocationStatus();
+        }
+      }
+    },
+    {
+      component: "p",
+      children: "Or"
+    },
+    {
+      type: "text",
+      label: "Address of your location"
     },
     {
       component: "h2",
@@ -93,6 +134,26 @@ export default class App extends Vue {
   saveTosessionStorage() {
     sessionStorage.setItem("formValues", JSON.stringify(this.formValues));
   }
+
+  getLocErr() {
+    return this.locationError
+      ? "Couldn't get your location. It is probably blocked by your browser. Please enter it into the textbox below."
+      : "";
+  }
+
+  async getLocationStatus() {
+    this.locationError = false;
+    await (this as any)
+      .$getLocation({ enableHighAccuracy: false })
+      .then((coordinates: any) => {
+        console.log(coordinates);
+      })
+      .catch((err: any) => {
+        this.locationError = true;
+      });
+  }
+
+  // TODO: Figure out whether location is a coordinate or a address we have to look up...
 
   runRouting(data: any) {
     console.log("data: ", data);

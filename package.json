@@ -10,9 +10,12 @@
   "dependencies": {
     "@braid/vue-formulate": "^2.4.3",
     "core-js": "^3.6.5",
+    "imask": "^6.0.5",
     "openrouteservice-js": "^0.1.10",
     "vue": "^2.6.11",
+    "vue-browser-geolocation": "^1.8.0",
     "vue-class-component": "^7.2.3",
+    "vue-formulate-extended": "^1.0.5",
     "vue-property-decorator": "^8.4.2"
   },
   "devDependencies": {
