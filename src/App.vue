@@ -3,7 +3,11 @@
     <simple-modal v-model="showModal">
       <template slot="body">
         <video ref="video" class="camera-stream" />
-        <button @click="capture">Click here to take picture</button>
+        <FormulateInput
+          @click="capture"
+          type="button"
+          label="Click here to take picture"
+        />
       </template>
     </simple-modal>
     <div class="camera-modal" v-show="videoStream">
@@ -41,7 +45,7 @@ export default class App extends Vue {
   storeAddyError = false;
   locationSuccess = false;
   showModal = false;
-  videoStream = {};
+  videoStream: MediaStream = new MediaStream();
   formSchema = [
     {
       component: "h1",
@@ -193,7 +197,9 @@ export default class App extends Vue {
 
   capture() {
     const mediaStreamTrack = this.videoStream.getVideoTracks()[0];
-    const imageCapture = new window.ImageCapture(mediaStreamTrack);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+    // @ts-ignore
+    const imageCapture = new ImageCapture(mediaStreamTrack);
     this.showModal = false;
     return imageCapture.takePhoto().then(blob => {
       this.destroy();
@@ -207,7 +213,7 @@ export default class App extends Vue {
   }
 
   destroyed() {
-    const tracks = this.mediaStream.getTracks();
+    const tracks = this.videoStream.getTracks();
     tracks.map(track => track.stop());
   }
 
@@ -222,7 +228,7 @@ export default class App extends Vue {
         this.showModal = true;
         this.videoStream = mediaStream;
         this.$refs.video["srcObject"] = mediaStream;
-        this.$refs.video.play();
+        (this.$refs.video as HTMLVideoElement).play();
         // console.log(mediaStream);
       })
       .catch(err => {
