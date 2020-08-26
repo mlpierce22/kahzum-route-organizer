@@ -1,11 +1,22 @@
 <template>
   <div id="app">
+    <simple-modal v-model="showModal">
+      <template slot="body">
+        <video ref="video" class="camera-stream" />
+        <button @click="capture">Click here to take picture</button>
+      </template>
+    </simple-modal>
+    <div class="camera-modal" v-show="videoStream">
+      <div class="camera-modal-container"></div>
+    </div>
     <FormulateForm
       class="form"
       v-model="formValues"
       :schema="formSchema"
       :errors="{
-        location: getLocErr()
+        location: getLocErr(),
+        storeAddy: getStoreErr(),
+        custyAddy: getCustyErr()
       }"
       @submit="runRouting"
     />
@@ -15,14 +26,22 @@
 <script lang="ts">
 import { Component, Vue, Watch } from "vue-property-decorator";
 import { calculateRoute } from "./driver-routing.js";
-
+import SimpleModal from "simple-modal-vue";
 @Component({
-  components: {}
+  components: { SimpleModal }
 })
 export default class App extends Vue {
   formValues = {};
   locationError = false;
-  userCoordinates = [];
+  userCoordinates = {
+    lat: null,
+    long: null
+  };
+  custAddyError = false;
+  storeAddyError = false;
+  locationSuccess = false;
+  showModal = false;
+  videoStream = {};
   formSchema = [
     {
       component: "h1",
@@ -94,6 +113,16 @@ export default class App extends Vue {
           label: "Store Address"
         },
         {
+          type: "button",
+          name: "storeAddy",
+          label: "From Image",
+          on: {
+            click: () => {
+              this.getPicture("store");
+            }
+          }
+        },
+        {
           component: "h3",
           children: "Add Customers"
         },
@@ -112,6 +141,16 @@ export default class App extends Vue {
               type: "text",
               name: "customerAddress",
               label: "Customer Address"
+            },
+            {
+              type: "button",
+              name: "custyAddy",
+              label: "From Image",
+              on: {
+                click: () => {
+                  this.getPicture("cust");
+                }
+              }
             }
           ]
         }
@@ -140,20 +179,77 @@ export default class App extends Vue {
       ? "Couldn't get your location. It is probably blocked by your browser. Please enter it into the textbox below."
       : "";
   }
+  getStoreErr() {
+    return this.storeAddyError
+      ? "Couldn't access your camera. It is probably blocked by your browser. Please enter the address into the textbox above."
+      : "";
+  }
 
+  getCustyErr() {
+    return this.custAddyError
+      ? "Couldn't access your camera. It is probably blocked by your browser. Please enter the address into the textbox above."
+      : "";
+  }
+
+  capture() {
+    const mediaStreamTrack = this.videoStream.getVideoTracks()[0];
+    const imageCapture = new window.ImageCapture(mediaStreamTrack);
+    this.showModal = false;
+    return imageCapture.takePhoto().then(blob => {
+      this.destroy();
+      console.log(blob);
+    });
+  }
+
+  destroy() {
+    const tracks = this.videoStream.getTracks();
+    tracks.map(track => track.stop());
+  }
+
+  destroyed() {
+    const tracks = this.mediaStream.getTracks();
+    tracks.map(track => track.stop());
+  }
+
+  getPicture(field) {
+    this.storeAddyError = false;
+    this.custAddyError = false;
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then(mediaStream => {
+        console.log("got it");
+        console.log(this.$refs.video);
+        this.showModal = true;
+        this.videoStream = mediaStream;
+        this.$refs.video["srcObject"] = mediaStream;
+        this.$refs.video.play();
+        // console.log(mediaStream);
+      })
+      .catch(err => {
+        if (field == "store") {
+          this.storeAddyError = true;
+        } else {
+          this.custAddyError = true;
+        }
+      });
+  }
   async getLocationStatus() {
     this.locationError = false;
     await (this as any)
       .$getLocation({ enableHighAccuracy: false })
       .then((coordinates: any) => {
-        console.log(coordinates);
+        this.locationSuccess = true;
+        this.userCoordinates.lat = coordinates.lat;
+        this.userCoordinates.long = coordinates.long;
+        this.formSchema.splice(6, 3, {
+          component: "h3",
+          children: "Got Location!"
+        });
       })
       .catch((err: any) => {
         this.locationError = true;
       });
   }
-
-  // TODO: Figure out whether location is a coordinate or a address we have to look up...
 
   runRouting(data: any) {
     console.log("data: ", data);
@@ -177,6 +273,16 @@ export default class App extends Vue {
   display: flex;
   flex-direction: column;
 
+  .camera-modal-container {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .take-picture-button {
+    display: flex;
+  }
   .form {
     align-self: center;
   }
