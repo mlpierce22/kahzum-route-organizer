@@ -12,6 +12,7 @@
     "core-js": "^3.6.5",
     "imask": "^6.0.5",
     "openrouteservice-js": "^0.1.10",
+    "simple-modal-vue": "^1.0.12",
     "vue": "^2.6.11",
     "vue-browser-geolocation": "^1.8.0",
     "vue-class-component": "^7.2.3",
