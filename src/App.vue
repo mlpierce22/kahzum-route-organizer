@@ -13,7 +13,7 @@
           :key="`${index}-address-for-modal`"
           type="button"
           :label="option"
-          @click="handlePromise('resolve')"
+          @click="handlePromise('resolve', option)"
         />
         <FormulateInput
           type="button"
@@ -61,11 +61,12 @@
       v-for="(address, index) in addresses"
       :key="`address-${index}`"
     >
-      <h2>Location {{ index }}</h2>
+      <h2>Location {{ index + 1 }}</h2>
       <FormulateInput
         type="file"
         name="address"
         :uploader="readFile"
+        @click="indexCurrentlyUploading = index"
         label="Add From Shipping label"
       />
       <FormulateInput
@@ -73,6 +74,9 @@
         label="Enter Address Manually"
         v-model="addresses[index]"
       />
+      <div class="error-message" v-if="addressErrors[index]">
+        Please try making this address more specific.
+      </div>
     </div>
     <br />
     <FormulateInput
@@ -117,51 +121,81 @@ import Tesseract from "tesseract.js";
 })
 export default class App extends Vue {
   mapsURL = ""; // important
-  apiKey = "";
+  apiKey = this.getAPIKey();
   numAddresses = 1;
   userLocation = [];
   showModal = false;
   addresses = [""];
+  addressPrevVal = [""];
   addressErrors = [false];
   locationError = false;
   locationSuccess = false;
   isOptionRight = false;
   addressOption = null;
-  resolve = null;
-  reject = null;
+  indexCurrentlyUploading = 0;
+  promise = {
+    resolve: null,
+    reject: null
+  };
 
   newLocation() {
+    this.addressPrevVal.push("");
     this.addresses.push("");
     this.addressErrors.push(false);
     this.numAddresses++;
   }
 
-  handlePromise(which) {
+  handlePromise(which, option = null) {
     if (which == "resolve") {
-      this.resolve;
+      this.promise.resolve(option);
     } else {
-      this.reject;
+      this.promise.reject();
     }
   }
+
   async validate() {
     for (let i = 0; i < this.addresses.length; ++i) {
       this.addressOption = await validateAddress(
         this.addresses[i],
         this.apiKey
       );
-      console.log("heres the address option", this.addressOption);
       this.isOptionRight = true;
-      const result = await new Promise((resolve, reject) => {
-        this.resolve = resolve;
-        this.reject = reject;
-        console.log("resolved!");
-        return true;
-      });
-      this.isOptionRight = false;
-
-      // probably want to update address
+      await new Promise((resolve, reject) => {
+        this.promise["resolve"] = resolve;
+        this.promise["reject"] = reject;
+      }).then(
+        (success: string) => {
+          console.log("succeeded!", success, i);
+          this.$set(this.addresses, i, success);
+          this.isOptionRight = false;
+        },
+        () => {
+          this.$set(this.addressErrors, i, true);
+          this.isOptionRight = false;
+        }
+      );
     }
-    // this.addresses.forEach((address, index) => {});
+  }
+
+  @Watch("apiKey")
+  updateApiKey() {
+    localStorage.setItem("apiKey", this.apiKey);
+  }
+
+  @Watch("addresses")
+  addressUpdate(event) {
+    const updateVals = this.addresses.map(address => {
+      return !this.addressPrevVal.includes(address);
+    });
+    updateVals.forEach((val, index) => {
+      this.addressErrors[index] = val ? false : this.addressErrors[index];
+    });
+    this.addressPrevVal = [...this.addresses];
+  }
+
+  getAPIKey() {
+    const key = localStorage.getItem("apiKey");
+    return key ? key : "";
   }
   // formValues = {};
 
@@ -309,7 +343,8 @@ export default class App extends Vue {
   // ];
 
   updateAddresses(text) {
-    this.addresses.push(text);
+    this.$set(this.addresses, this.indexCurrentlyUploading, text);
+    this.$set(this.addressPrevVal, this.indexCurrentlyUploading, text);
   }
 
   mounted() {
@@ -349,7 +384,7 @@ export default class App extends Vue {
   //   this.readFile(file, progress, error, option, "store");
   // }
 
-  async readFile(file, progress, error, option, input) {
+  async readFile(file, progress, error, option) {
     // https://github.com/naptha/tesseract.js
     Tesseract.recognize(file, "eng", {
       logger: m => {

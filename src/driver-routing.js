@@ -33,6 +33,7 @@ async function toCoordinates(data) {
       text: data.addresses[i],
       // Where do we get these from?? current location??
       //boundary_circle: { lat_lng: [49.412388, 8.681247], radius: 50 },
+      boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 },
       //boundary_bbox: [[49.260929, 8.40063], [49.504102, 8.941707]],
       boundary_country: ["US"]
     });
@@ -146,7 +147,7 @@ export async function validateAddress(address, apiKey) {
   const result = await geo.geocode({
     text: address,
     boundary_country: ["USA"],
-    boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 100 }
+    boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 }
   });
   console.log("the result", result);
   const allResults = result.features.map(feature => {
