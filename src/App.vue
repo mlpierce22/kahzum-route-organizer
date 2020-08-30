@@ -2,7 +2,9 @@
   <div id="app">
     <simple-modal v-model="showModal">
       <template slot="body">
-        <a target="_blank" :href="mapsURL">{{ mapsURL }}</a>
+        <a target="_blank" :href="mapsURL"
+          >Link To Google Maps route from your location to your destinations</a
+        >
       </template>
     </simple-modal>
     <simple-modal v-model="isOptionRight">
@@ -50,8 +52,18 @@
         label="Get My Location"
       />
       <p>OR</p>
-      <!-- :error="getLocErr()" -->
       <FormulateInput label="Address of your location" v-model="userLocation" />
+      <FormulateInput
+        label="Validate Location Address"
+        type="button"
+        @click="validateUserLocation"
+        v-if="typeof userLocation == 'string' && userLocation !== ''"
+      />
+    </div>
+    <div class="locationError" v-if="locationError">
+      Couldn't get your location. It is probably blocked by your browser or the
+      address you entered couldn't be found. Please enter it into the textbox
+      below or try being more specific.
     </div>
     <h2 v-if="locationSuccess">Success! Got your coordinates!</h2>
 
@@ -91,7 +103,15 @@
       @click="validate()"
       v-if="apiKey !== ''"
     />
-    <FormulateInput type="submit" label="Get Routes" @click="runRouting()" />
+    <div class="need-location" v-if="noLocation || locationError">
+      You must select your location before you are allowed to route
+    </div>
+    <FormulateInput
+      v-if="!noLocation && !locationError"
+      type="submit"
+      label="Get Routes"
+      @click="runRouting()"
+    />
     <br />
   </div>
 </template>
@@ -99,7 +119,11 @@
 <script lang="ts">
 import { Component, Vue, Watch } from "vue-property-decorator";
 // https://github.com/GIScience/openrouteservice-js
-import { calculateRoute, validateAddress } from "./driver-routing.js";
+import {
+  calculateRoute,
+  validateAddress,
+  addressToCoords
+} from "./driver-routing.js";
 import SimpleModal from "simple-modal-vue";
 import Tesseract from "tesseract.js";
 
@@ -110,7 +134,7 @@ export default class App extends Vue {
   mapsURL = ""; // important
   apiKey = this.getAPIKey();
   numAddresses = 1;
-  userLocation = [];
+  userLocation: string | any[] = [];
   showModal = false;
   addresses = [""];
   addressPrevVal = [""];
@@ -125,6 +149,13 @@ export default class App extends Vue {
     reject: null
   };
 
+  get noLocation() {
+    return (typeof this.userLocation == "string" && this.userLocation == "") ||
+      (Array.isArray(this.userLocation) && this.userLocation.length == 0)
+      ? true
+      : false;
+  }
+
   newLocation() {
     this.addressPrevVal.push("");
     this.addresses.push("");
@@ -138,6 +169,26 @@ export default class App extends Vue {
     } else {
       this.promise.reject();
     }
+  }
+
+  async validateUserLocation() {
+    this.addressOption = await validateAddress(this.userLocation, this.apiKey);
+    this.isOptionRight = true;
+    await new Promise((resolve, reject) => {
+      this.promise["resolve"] = resolve;
+      this.promise["reject"] = reject;
+    }).then(
+      (success: string) => {
+        console.log("succeeded!", success);
+        this.locationError = false;
+        this.userLocation = success;
+        this.isOptionRight = false;
+      },
+      () => {
+        this.locationError = true;
+        this.isOptionRight = false;
+      }
+    );
   }
 
   async validate() {
@@ -190,12 +241,6 @@ export default class App extends Vue {
     this.$set(this.addressPrevVal, this.indexCurrentlyUploading, text);
   }
 
-  getLocErr() {
-    return this.locationError
-      ? "Couldn't get your location. It is probably blocked by your browser. Please enter it into the textbox below."
-      : "";
-  }
-
   async readFile(file, progress, error, option) {
     // https://github.com/naptha/tesseract.js
     Tesseract.recognize(file, "eng", {
@@ -227,19 +272,30 @@ export default class App extends Vue {
     }
   }
 
-  buildData() {
+  async buildData() {
+    let addy = undefined;
+    if (!Array.isArray(this.userLocation)) {
+      addy = await addressToCoords(this.userLocation, this.apiKey);
+      if (addy == null) {
+        return null;
+      }
+    }
     return {
       "api-key": this.apiKey,
       addresses: this.addresses,
-      currentLocation: [...this.userLocation]
+      currentLocation: addy ? addy : [...this.userLocation]
     };
   }
 
   async runRouting() {
-    const data = this.buildData();
-    this.mapsURL = await calculateRoute(data);
-    this.showModal = true;
-    sessionStorage.removeItem("formValues");
+    const data = await this.buildData();
+    if (data !== null) {
+      this.mapsURL = await calculateRoute(data);
+      this.showModal = true;
+    } else {
+      this.locationError = true;
+    }
+    //sessionStorage.removeItem("formValues");
   }
 }
 </script>

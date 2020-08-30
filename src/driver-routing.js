@@ -140,6 +140,29 @@ async function getDirections(sortedMatrix) {
   return finalResult;
 }
 
+export async function addressToCoords(address, apiKey) {
+  const geo = new openrouteservice.Geocode({
+    api_key: apiKey
+  });
+  const result = await geo.geocode({
+    text: address,
+    // Where do we get these from?? current location??
+    //boundary_circle: { lat_lng: [49.412388, 8.681247], radius: 50 },
+    boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 },
+    //boundary_bbox: [[49.260929, 8.40063], [49.504102, 8.941707]],
+    boundary_country: ["US"]
+  });
+  try {
+    // See response format at bottom: Geocode Response
+    console.log("response", result.features[0].geometry.coordinates);
+    return result.features[0].geometry.coordinates;
+  } catch (err) {
+    const str = "An error occured: " + err;
+    console.log(str);
+    return null;
+  }
+}
+
 export async function validateAddress(address, apiKey) {
   const geo = new openrouteservice.Geocode({
     api_key: apiKey
