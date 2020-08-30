@@ -93,19 +93,6 @@
     />
     <FormulateInput type="submit" label="Get Routes" @click="runRouting()" />
     <br />
-
-    <!-- <FormulateForm
-      class="form"
-      v-model="formValues"
-      :schema="formSchema"
-      :errors="{
-        location: getLocErr(),
-        storeAddy: getStoreErr(),
-        custyAddy: getCustyErr()
-      }"
-      @submit="runRouting"
-    /> -->
-    <!-- <FormulateInput type="button" @click="runRouting()" /> -->
   </div>
 </template>
 
@@ -197,192 +184,17 @@ export default class App extends Vue {
     const key = localStorage.getItem("apiKey");
     return key ? key : "";
   }
-  // formValues = {};
-
-  // userCoordinates = {
-  //   lat: null,
-  //   long: null
-  // };
-
-  // toUpdate: any[] = [];
-  // custAddyError = false;
-  // storeAddyError = false;
-  // locationSuccess = false;
-  // storeAddy = "";
-  // custyAddy = "";
-  // formSchema = [
-  //   {
-  //     component: "h1",
-  //     children: "Kahzum Route Organizer"
-  //   },
-  //   {
-  //     component: "h2",
-  //     children: "Your API Key"
-  //   },
-  //   {
-  //     component: "p",
-  //     children:
-  //       "API key can be found at openrouteservice (https://openrouteservice.org/dev/#/home)"
-  //   },
-  //   {
-  //     type: "text",
-  //     name: "api-key",
-  //     validation: "required",
-  //     "validation-messages": {
-  //       required: "You must enter an API key."
-  //     },
-  //     label: "Please enter your API key."
-  //   },
-  //   {
-  //     component: "h2",
-  //     children: "Your location."
-  //   },
-  //   {
-  //     component: "p",
-  //     children:
-  //       "Please enter your location, or allow us to get it automatically via gps."
-  //   },
-  //   {
-  //     type: "button",
-  //     name: "location",
-  //     label: "Get My Location",
-  //     on: {
-  //       click: () => {
-  //         this.getLocationStatus();
-  //       }
-  //     }
-  //   },
-  //   {
-  //     component: "p",
-  //     children: "Or"
-  //   },
-  //   {
-  //     type: "text",
-  //     label: "Address of your location"
-  //   },
-  //   {
-  //     component: "h2",
-  //     children: "Add Stores"
-  //   },
-  //   {
-  //     type: "group",
-  //     name: "stores",
-  //     validation: "min:1",
-  //     repeatable: true,
-  //     "add-label": "+ Add Store",
-  //     "error-behavior": "submit",
-  //     "validation-messages": {
-  //       min: "You must have at least 1 store!"
-  //     },
-  //     children: [
-  //       {
-  //         type: "text",
-  //         name: "storeAddress",
-  //         label: "Store Address"
-  //       },
-  //       {
-  //         type: "file",
-  //         name: "storeAddy",
-  //         label: "From Image",
-  //         uploader: this.readFileStore
-  //       },
-  //       // {
-  //       //   type: "button",
-  //       //   name: "storeAddy",
-
-  //       //   on: {
-  //       //     click: () => {
-  //       //       this.getPicture("store");
-  //       //     }
-  //       //   }
-  //       // },
-  //       {
-  //         component: "h3",
-  //         children: "Add Customers"
-  //       },
-  //       {
-  //         type: "group",
-  //         name: "customers",
-  //         repeatable: true,
-  //         "add-label": "+ Add Customer",
-  //         validation: "min:1",
-  //         "error-behavior": "submit",
-  //         "validation-messages": {
-  //           min: "Every store must have at least 1 customer!"
-  //         },
-  //         children: [
-  //           {
-  //             type: "text",
-  //             name: "customerAddress",
-  //             label: "Customer Address"
-  //           },
-  //           {
-  //             type: "file",
-  //             name: "custyAddy",
-  //             label: "From Image",
-  //             uploader: this.readFileCust
-  //           }
-  //           // {
-  //           //   type: "button",
-  //           //   name: "custyAddy",
-  //           //   label: "From Image",
-  //           //   on: {
-  //           //     click: () => {
-  //           //       this.getPicture("cust");
-  //           //     }
-  //           //   }
-  //           // }
-  //         ]
-  //       }
-  //     ]
-  //   },
-  //   {
-  //     type: "submit",
-  //     label: "Calculate Routes"
-  //   }
-  // ];
 
   updateAddresses(text) {
     this.$set(this.addresses, this.indexCurrentlyUploading, text);
     this.$set(this.addressPrevVal, this.indexCurrentlyUploading, text);
   }
 
-  mounted() {
-    // const formVals = sessionStorage.getItem("formValues");
-    // if (formVals) {
-    //   this.formValues = JSON.parse(formVals);
-    // }
-  }
-
-  // @Watch("formValues")
-  // saveTosessionStorage() {
-  //   sessionStorage.setItem("formValues", JSON.stringify(this.formValues));
-  // }
-
   getLocErr() {
     return this.locationError
       ? "Couldn't get your location. It is probably blocked by your browser. Please enter it into the textbox below."
       : "";
   }
-  // getStoreErr() {
-  //   return this.storeAddyError
-  //     ? "Couldn't access your camera. It is probably blocked by your browser. Please enter the address into the textbox above."
-  //     : "";
-  // }
-
-  // getCustyErr() {
-  //   return this.custAddyError
-  //     ? "Couldn't access your camera. It is probably blocked by your browser. Please enter the address into the textbox above."
-  //     : "";
-  // }
-
-  // readFileCust(file, progress, error, option) {
-  //   this.readFile(file, progress, error, option, "customer");
-  // }
-
-  // readFileStore(file, progress, error, option) {
-  //   this.readFile(file, progress, error, option, "store");
-  // }
 
   async readFile(file, progress, error, option) {
     // https://github.com/naptha/tesseract.js
@@ -395,78 +207,8 @@ export default class App extends Vue {
       }
     }).then(({ data: { text } }) => {
       this.updateAddresses(text);
-      // if (input == "customer") {
-      //   this.findCustomer(text);
-      // } else {
-      //   this.findStore(text);
-      // }
     });
   }
-
-  // findCustomer(value) {
-  //   let win = false;
-  //   const takenStores = this.toUpdate
-  //     .map(val => (val.item == "store" ? val.storeIndex : undefined))
-  //     .filter(val => val);
-  //   const takenCust = this.toUpdate
-  //     .map(val => {
-  //       if (val.item == "customer") {
-  //         return val.custIndex;
-  //       }
-  //       val.storeIndex;
-  //     })
-  //     .filter(val => val);
-  //   console.log("customers:", takenCust);
-  //   console.log("stores: ", takenStores);
-  //   this.formValues["stores"].map((store, outerIndex) => {
-  //     console.log("in store", store);
-  //     store["customers"].map((cust, innerIndex) => {
-  //       if (
-  //         (cust["customerAddress"] && cust["customerAddress"] == "") ||
-  //         cust["custyAddy"]
-  //       ) {
-  //         if (!win) {
-  //           this.toUpdate.push({
-  //             item: "customerAddress",
-  //             storeIndex: outerIndex,
-  //             custIndex: innerIndex,
-  //             value: value
-  //           });
-  //           win = true;
-  //         }
-  //       }
-  //     });
-  //   });
-  // }
-
-  // updateValue(item, value, storeIndex, customerIndex = null) {
-  //   console.log("");
-  // }
-
-  // findStore(value) {
-  //   let win = false;
-  //   console.log("finding store");
-  //   // TODO: why is this filter not worrking
-  //   const takenStores = this.toUpdate
-  //     .map(val => (val.item == "store" ? val.storeIndex : undefined))
-  //     .filter(val => val);
-  //   this.formValues["stores"].map((store, index) => {
-  //     if (
-  //       ((store["storeAddress"] && store["storeAddress"] == "") ||
-  //         store["storeAddy"]) &&
-  //       !takenStores.includes(index)
-  //     ) {
-  //       if (!win) {
-  //         this.toUpdate.push({
-  //           item: "storeAddress",
-  //           storeIndex: index,
-  //           value: value
-  //         });
-  //         win = true;
-  //       }
-  //     }
-  //   });
-  // }
 
   async getLocationStatus() {
     this.locationError = false;
@@ -494,7 +236,6 @@ export default class App extends Vue {
   }
 
   async runRouting() {
-    //console.log("data: ", data);
     const data = this.buildData();
     this.mapsURL = await calculateRoute(data);
     this.showModal = true;
