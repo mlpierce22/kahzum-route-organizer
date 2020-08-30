@@ -264,8 +264,8 @@ export default class App extends Vue {
     try {
       this.locationSuccess = true;
       console.log(result);
-      this.userLocation.push(result.lng);
-      this.userLocation.push(result.lat);
+      (this.userLocation as any[]).push(result.lng);
+      (this.userLocation as any[]).push(result.lat);
     } catch (err) {
       console.log("an error occured:", err);
       this.locationError = true;
