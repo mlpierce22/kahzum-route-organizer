@@ -2,18 +2,95 @@
   <div id="app">
     <simple-modal v-model="showModal">
       <template slot="body">
-        <video ref="video" class="camera-stream" />
+        <a target="_blank" :href="mapsURL">{{ mapsURL }}</a>
+      </template>
+    </simple-modal>
+    <simple-modal v-model="isOptionRight">
+      <template slot="body">
+        <p>Please click on the right address.</p>
         <FormulateInput
-          @click="capture"
+          v-for="(option, index) in addressOption"
+          :key="`${index}-address-for-modal`"
           type="button"
-          label="Click here to take picture"
+          :label="option"
+          @click="handlePromise('resolve')"
+        />
+        <FormulateInput
+          type="button"
+          label="None are right."
+          @click="handlePromise('reject')"
         />
       </template>
     </simple-modal>
-    <div class="camera-modal" v-show="videoStream">
-      <div class="camera-modal-container"></div>
+    <h1>Kahzum Route Organizer</h1>
+    <h2>Your API Key</h2>
+    <p>
+      API key can be found at
+      <a href="https://openrouteservice.org/dev/#/home" target="_blank"
+        >openrouteservice</a
+      >
+    </p>
+    <FormulateInput
+      type="text"
+      name="api-key"
+      validation="required"
+      :validation-messages="{ required: 'You must enter an API key.' }"
+      label="Please enter your API key."
+      v-model="apiKey"
+    />
+    <h2 v-if="!locationSuccess">Your Location</h2>
+    <p v-if="!locationSuccess">
+      Please enter your location, or allow us to get it automatically via gps.
+    </p>
+    <div class="location-form" v-if="!locationSuccess">
+      <FormulateInput
+        type="button"
+        @click="getLocationStatus()"
+        name="location"
+        label="Get My Location"
+      />
+      <p>OR</p>
+      <!-- :error="getLocErr()" -->
+      <FormulateInput label="Address of your location" v-model="userLocation" />
     </div>
-    <FormulateForm
+    <h2 v-if="locationSuccess">Success! Got your coordinates!</h2>
+
+    <h2>Add Locations</h2>
+    <div
+      class="address"
+      v-for="(address, index) in addresses"
+      :key="`address-${index}`"
+    >
+      <h2>Location {{ index }}</h2>
+      <FormulateInput
+        type="file"
+        name="address"
+        :uploader="readFile"
+        label="Add From Shipping label"
+      />
+      <FormulateInput
+        type="text"
+        label="Enter Address Manually"
+        v-model="addresses[index]"
+      />
+    </div>
+    <br />
+    <FormulateInput
+      type="button"
+      label="Add another location"
+      @click="newLocation()"
+    />
+    <br />
+    <FormulateInput
+      type="submit"
+      label="Validate Addresses"
+      @click="validate()"
+      v-if="apiKey !== ''"
+    />
+    <FormulateInput type="submit" label="Get Routes" @click="runRouting()" />
+    <br />
+
+    <!-- <FormulateForm
       class="form"
       v-model="formValues"
       :schema="formSchema"
@@ -23,243 +100,369 @@
         custyAddy: getCustyErr()
       }"
       @submit="runRouting"
-    />
+    /> -->
+    <!-- <FormulateInput type="button" @click="runRouting()" /> -->
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Vue, Watch } from "vue-property-decorator";
-import { calculateRoute } from "./driver-routing.js";
+// https://github.com/GIScience/openrouteservice-js
+import { calculateRoute, validateAddress } from "./driver-routing.js";
 import SimpleModal from "simple-modal-vue";
+import Tesseract from "tesseract.js";
+
 @Component({
   components: { SimpleModal }
 })
 export default class App extends Vue {
-  formValues = {};
-  locationError = false;
-  userCoordinates = {
-    lat: null,
-    long: null
-  };
-  custAddyError = false;
-  storeAddyError = false;
-  locationSuccess = false;
+  mapsURL = ""; // important
+  apiKey = "";
+  numAddresses = 1;
+  userLocation = [];
   showModal = false;
-  videoStream: MediaStream = new MediaStream();
-  formSchema = [
-    {
-      component: "h1",
-      children: "Kahzum Route Organizer"
-    },
-    {
-      component: "h2",
-      children: "Your API Key"
-    },
-    {
-      component: "p",
-      children:
-        "API key can be found at openrouteservice (https://openrouteservice.org/dev/#/home)"
-    },
-    {
-      type: "text",
-      name: "api-key",
-      validation: "required",
-      "validation-messages": {
-        required: "You must enter an API key."
-      },
-      label: "Please enter your API key."
-    },
-    {
-      component: "h2",
-      children: "Your location."
-    },
-    {
-      component: "p",
-      children:
-        "Please enter your location, or allow us to get it automatically via gps."
-    },
-    {
-      type: "button",
-      name: "location",
-      label: "Get My Location",
-      on: {
-        click: () => {
-          this.getLocationStatus();
-        }
-      }
-    },
-    {
-      component: "p",
-      children: "Or"
-    },
-    {
-      type: "text",
-      label: "Address of your location"
-    },
-    {
-      component: "h2",
-      children: "Add Stores"
-    },
-    {
-      type: "group",
-      name: "stores",
-      validation: "min:1",
-      repeatable: true,
-      "add-label": "+ Add Store",
-      "error-behavior": "submit",
-      "validation-messages": {
-        min: "You must have at least 1 store!"
-      },
-      children: [
-        {
-          type: "text",
-          name: "storeAddress",
-          label: "Store Address"
-        },
-        {
-          type: "button",
-          name: "storeAddy",
-          label: "From Image",
-          on: {
-            click: () => {
-              this.getPicture("store");
-            }
-          }
-        },
-        {
-          component: "h3",
-          children: "Add Customers"
-        },
-        {
-          type: "group",
-          name: "customers",
-          repeatable: true,
-          "add-label": "+ Add Customer",
-          validation: "min:1",
-          "error-behavior": "submit",
-          "validation-messages": {
-            min: "Every store must have at least 1 customer!"
-          },
-          children: [
-            {
-              type: "text",
-              name: "customerAddress",
-              label: "Customer Address"
-            },
-            {
-              type: "button",
-              name: "custyAddy",
-              label: "From Image",
-              on: {
-                click: () => {
-                  this.getPicture("cust");
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      type: "submit",
-      label: "Calculate Routes"
+  addresses = [""];
+  addressErrors = [false];
+  locationError = false;
+  locationSuccess = false;
+  isOptionRight = false;
+  addressOption = null;
+  resolve = null;
+  reject = null;
+
+  newLocation() {
+    this.addresses.push("");
+    this.addressErrors.push(false);
+    this.numAddresses++;
+  }
+
+  handlePromise(which) {
+    if (which == "resolve") {
+      this.resolve;
+    } else {
+      this.reject;
     }
-  ];
+  }
+  async validate() {
+    for (let i = 0; i < this.addresses.length; ++i) {
+      this.addressOption = await validateAddress(
+        this.addresses[i],
+        this.apiKey
+      );
+      console.log("heres the address option", this.addressOption);
+      this.isOptionRight = true;
+      const result = await new Promise((resolve, reject) => {
+        this.resolve = resolve;
+        this.reject = reject;
+        console.log("resolved!");
+        return true;
+      });
+      this.isOptionRight = false;
+
+      // probably want to update address
+    }
+    // this.addresses.forEach((address, index) => {});
+  }
+  // formValues = {};
+
+  // userCoordinates = {
+  //   lat: null,
+  //   long: null
+  // };
+
+  // toUpdate: any[] = [];
+  // custAddyError = false;
+  // storeAddyError = false;
+  // locationSuccess = false;
+  // storeAddy = "";
+  // custyAddy = "";
+  // formSchema = [
+  //   {
+  //     component: "h1",
+  //     children: "Kahzum Route Organizer"
+  //   },
+  //   {
+  //     component: "h2",
+  //     children: "Your API Key"
+  //   },
+  //   {
+  //     component: "p",
+  //     children:
+  //       "API key can be found at openrouteservice (https://openrouteservice.org/dev/#/home)"
+  //   },
+  //   {
+  //     type: "text",
+  //     name: "api-key",
+  //     validation: "required",
+  //     "validation-messages": {
+  //       required: "You must enter an API key."
+  //     },
+  //     label: "Please enter your API key."
+  //   },
+  //   {
+  //     component: "h2",
+  //     children: "Your location."
+  //   },
+  //   {
+  //     component: "p",
+  //     children:
+  //       "Please enter your location, or allow us to get it automatically via gps."
+  //   },
+  //   {
+  //     type: "button",
+  //     name: "location",
+  //     label: "Get My Location",
+  //     on: {
+  //       click: () => {
+  //         this.getLocationStatus();
+  //       }
+  //     }
+  //   },
+  //   {
+  //     component: "p",
+  //     children: "Or"
+  //   },
+  //   {
+  //     type: "text",
+  //     label: "Address of your location"
+  //   },
+  //   {
+  //     component: "h2",
+  //     children: "Add Stores"
+  //   },
+  //   {
+  //     type: "group",
+  //     name: "stores",
+  //     validation: "min:1",
+  //     repeatable: true,
+  //     "add-label": "+ Add Store",
+  //     "error-behavior": "submit",
+  //     "validation-messages": {
+  //       min: "You must have at least 1 store!"
+  //     },
+  //     children: [
+  //       {
+  //         type: "text",
+  //         name: "storeAddress",
+  //         label: "Store Address"
+  //       },
+  //       {
+  //         type: "file",
+  //         name: "storeAddy",
+  //         label: "From Image",
+  //         uploader: this.readFileStore
+  //       },
+  //       // {
+  //       //   type: "button",
+  //       //   name: "storeAddy",
+
+  //       //   on: {
+  //       //     click: () => {
+  //       //       this.getPicture("store");
+  //       //     }
+  //       //   }
+  //       // },
+  //       {
+  //         component: "h3",
+  //         children: "Add Customers"
+  //       },
+  //       {
+  //         type: "group",
+  //         name: "customers",
+  //         repeatable: true,
+  //         "add-label": "+ Add Customer",
+  //         validation: "min:1",
+  //         "error-behavior": "submit",
+  //         "validation-messages": {
+  //           min: "Every store must have at least 1 customer!"
+  //         },
+  //         children: [
+  //           {
+  //             type: "text",
+  //             name: "customerAddress",
+  //             label: "Customer Address"
+  //           },
+  //           {
+  //             type: "file",
+  //             name: "custyAddy",
+  //             label: "From Image",
+  //             uploader: this.readFileCust
+  //           }
+  //           // {
+  //           //   type: "button",
+  //           //   name: "custyAddy",
+  //           //   label: "From Image",
+  //           //   on: {
+  //           //     click: () => {
+  //           //       this.getPicture("cust");
+  //           //     }
+  //           //   }
+  //           // }
+  //         ]
+  //       }
+  //     ]
+  //   },
+  //   {
+  //     type: "submit",
+  //     label: "Calculate Routes"
+  //   }
+  // ];
+
+  updateAddresses(text) {
+    this.addresses.push(text);
+  }
 
   mounted() {
-    const formVals = sessionStorage.getItem("formValues");
-    if (formVals) {
-      this.formValues = JSON.parse(formVals);
-    }
+    // const formVals = sessionStorage.getItem("formValues");
+    // if (formVals) {
+    //   this.formValues = JSON.parse(formVals);
+    // }
   }
 
-  @Watch("formValues")
-  saveTosessionStorage() {
-    sessionStorage.setItem("formValues", JSON.stringify(this.formValues));
-  }
+  // @Watch("formValues")
+  // saveTosessionStorage() {
+  //   sessionStorage.setItem("formValues", JSON.stringify(this.formValues));
+  // }
 
   getLocErr() {
     return this.locationError
       ? "Couldn't get your location. It is probably blocked by your browser. Please enter it into the textbox below."
       : "";
   }
-  getStoreErr() {
-    return this.storeAddyError
-      ? "Couldn't access your camera. It is probably blocked by your browser. Please enter the address into the textbox above."
-      : "";
-  }
+  // getStoreErr() {
+  //   return this.storeAddyError
+  //     ? "Couldn't access your camera. It is probably blocked by your browser. Please enter the address into the textbox above."
+  //     : "";
+  // }
 
-  getCustyErr() {
-    return this.custAddyError
-      ? "Couldn't access your camera. It is probably blocked by your browser. Please enter the address into the textbox above."
-      : "";
-  }
+  // getCustyErr() {
+  //   return this.custAddyError
+  //     ? "Couldn't access your camera. It is probably blocked by your browser. Please enter the address into the textbox above."
+  //     : "";
+  // }
 
-  capture() {
-    const mediaStreamTrack = this.videoStream.getVideoTracks()[0];
-    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-    // @ts-ignore
-    const imageCapture = new ImageCapture(mediaStreamTrack);
-    this.showModal = false;
-    return imageCapture.takePhoto().then(blob => {
-      this.destroy();
-      console.log(blob);
+  // readFileCust(file, progress, error, option) {
+  //   this.readFile(file, progress, error, option, "customer");
+  // }
+
+  // readFileStore(file, progress, error, option) {
+  //   this.readFile(file, progress, error, option, "store");
+  // }
+
+  async readFile(file, progress, error, option, input) {
+    // https://github.com/naptha/tesseract.js
+    Tesseract.recognize(file, "eng", {
+      logger: m => {
+        if (m.status == "recognizing text") {
+          console.log(m);
+          progress(Math.floor(m.progress * 100));
+        }
+      }
+    }).then(({ data: { text } }) => {
+      this.updateAddresses(text);
+      // if (input == "customer") {
+      //   this.findCustomer(text);
+      // } else {
+      //   this.findStore(text);
+      // }
     });
   }
 
-  destroy() {
-    const tracks = this.videoStream.getTracks();
-    tracks.map(track => track.stop());
-  }
+  // findCustomer(value) {
+  //   let win = false;
+  //   const takenStores = this.toUpdate
+  //     .map(val => (val.item == "store" ? val.storeIndex : undefined))
+  //     .filter(val => val);
+  //   const takenCust = this.toUpdate
+  //     .map(val => {
+  //       if (val.item == "customer") {
+  //         return val.custIndex;
+  //       }
+  //       val.storeIndex;
+  //     })
+  //     .filter(val => val);
+  //   console.log("customers:", takenCust);
+  //   console.log("stores: ", takenStores);
+  //   this.formValues["stores"].map((store, outerIndex) => {
+  //     console.log("in store", store);
+  //     store["customers"].map((cust, innerIndex) => {
+  //       if (
+  //         (cust["customerAddress"] && cust["customerAddress"] == "") ||
+  //         cust["custyAddy"]
+  //       ) {
+  //         if (!win) {
+  //           this.toUpdate.push({
+  //             item: "customerAddress",
+  //             storeIndex: outerIndex,
+  //             custIndex: innerIndex,
+  //             value: value
+  //           });
+  //           win = true;
+  //         }
+  //       }
+  //     });
+  //   });
+  // }
 
-  destroyed() {
-    const tracks = this.videoStream.getTracks();
-    tracks.map(track => track.stop());
-  }
+  // updateValue(item, value, storeIndex, customerIndex = null) {
+  //   console.log("");
+  // }
 
-  getPicture(field) {
-    this.storeAddyError = false;
-    this.custAddyError = false;
-    navigator.mediaDevices
-      .getUserMedia({ video: true })
-      .then(mediaStream => {
-        console.log("got it");
-        console.log(this.$refs.video);
-        this.showModal = true;
-        this.videoStream = mediaStream;
-        this.$refs.video["srcObject"] = mediaStream;
-        (this.$refs.video as HTMLVideoElement).play();
-        // console.log(mediaStream);
-      })
-      .catch(err => {
-        if (field == "store") {
-          this.storeAddyError = true;
-        } else {
-          this.custAddyError = true;
-        }
-      });
-  }
+  // findStore(value) {
+  //   let win = false;
+  //   console.log("finding store");
+  //   // TODO: why is this filter not worrking
+  //   const takenStores = this.toUpdate
+  //     .map(val => (val.item == "store" ? val.storeIndex : undefined))
+  //     .filter(val => val);
+  //   this.formValues["stores"].map((store, index) => {
+  //     if (
+  //       ((store["storeAddress"] && store["storeAddress"] == "") ||
+  //         store["storeAddy"]) &&
+  //       !takenStores.includes(index)
+  //     ) {
+  //       if (!win) {
+  //         this.toUpdate.push({
+  //           item: "storeAddress",
+  //           storeIndex: index,
+  //           value: value
+  //         });
+  //         win = true;
+  //       }
+  //     }
+  //   });
+  // }
+
   async getLocationStatus() {
     this.locationError = false;
-    await (this as any)
-      .$getLocation({ enableHighAccuracy: false })
-      .then((coordinates: any) => {
-        this.locationSuccess = true;
-        this.userCoordinates.lat = coordinates.lat;
-        this.userCoordinates.long = coordinates.long;
-        this.formSchema.splice(6, 3, {
-          component: "h3",
-          children: "Got Location!"
-        });
-      })
-      .catch((err: any) => {
-        this.locationError = true;
-      });
+    const result = await (this as any).$getLocation({
+      enableHighAccuracy: true
+    });
+
+    try {
+      this.locationSuccess = true;
+      console.log(result);
+      this.userLocation.push(result.lng);
+      this.userLocation.push(result.lat);
+    } catch (err) {
+      console.log("an error occured:", err);
+      this.locationError = true;
+    }
   }
 
-  runRouting(data: any) {
-    console.log("data: ", data);
-    calculateRoute(data);
+  buildData() {
+    return {
+      "api-key": this.apiKey,
+      addresses: this.addresses,
+      currentLocation: [...this.userLocation]
+    };
+  }
+
+  async runRouting() {
+    //console.log("data: ", data);
+    const data = this.buildData();
+    this.mapsURL = await calculateRoute(data);
+    this.showModal = true;
     sessionStorage.removeItem("formValues");
   }
 }
