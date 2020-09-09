@@ -137,6 +137,7 @@ export default class App extends Vue {
   mapsURL = ""; // important
   apiKey = this.getAPIKey();
   numAddresses = 1;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userLocation: string | any[] = [];
   showModal = false;
   addresses = [""];
@@ -221,7 +222,7 @@ export default class App extends Vue {
   }
 
   @Watch("addresses")
-  addressUpdate(event) {
+  addressUpdate() {
     const updateVals = this.addresses.map(address => {
       return !this.addressPrevVal.includes(address);
     });
@@ -364,13 +365,16 @@ export default class App extends Vue {
 
   async getLocationStatus() {
     this.locationError = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await (this as any).$getLocation({
       enableHighAccuracy: true
     });
 
     try {
       this.locationSuccess = true;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (this.userLocation as any[]).push(result.lng);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (this.userLocation as any[]).push(result.lat);
     } catch (err) {
       console.log("an error occured:", err);
