@@ -257,15 +257,19 @@ export default class App extends Vue {
             break;
           } else {
             // line=line[:index]+line[index+len(word)+1:]
+            // const temp =
+            //   line.slice(0, index) + line.slice(0, index + word.length + 1);
             const temp =
-              line.slice(0, index) + line.slice(0, index + word.length + 1);
+              line.slice(0, index) + line.slice(index + word.length + 1, line.length);
             infoBits[count] = temp;
           }
         }
       });
     });
+    
     infoBits = infoBits.filter(infoBit => infoBit !== "" && infoBit !== "");
     // console.log("infobits at this point: ", infoBits);
+    console.log(infoBits)
     count = -1;
     // take only the furthest away (because this should also find the top address)
     const temp = [];
@@ -274,6 +278,7 @@ export default class App extends Vue {
       const streetRegex = /\d+[ ]([a-z]\.\s)?([a-z](\s)?)+\w\.?/i;
       const cityZipRegex = /(\w[ ]?)+[ CA ]\b\d{5}(?:-\d{4})?\b/i;
       if (line.match(streetRegex)) {
+        console.log("street", line)
         const toformat1 = line.toLowerCase().indexOf("to: ");
         const toformat2 = line.toLowerCase().indexOf("to ");
         if (toformat1 >= 0) {
@@ -282,8 +287,11 @@ export default class App extends Vue {
         } else if (toformat2 >= 0) {
           const lineToPush = line.slice(toformat2 + "to ".length);
           temp.push({ type: "street", line: lineToPush });
+        } else{
+          temp.push({ type: "street", line: line })
         }
       } else if (line.match(cityZipRegex)) {
+        console.log("zip", line)
         temp.push({ type: "cityZip", line });
       }
     }
@@ -291,20 +299,29 @@ export default class App extends Vue {
       street: "",
       cityZip: ""
     };
-
+    console.log("temp", temp[0])
+    console.log("temp", temp[1])
     for (let i = temp.length - 1; i >= 0; --i) {
       if (addressObj[temp[i].type] == "") {
         addressObj[temp[i].type] = temp[i].line;
       }
     }
+    console.log("return", addressObj.street)
+    console.log("return", addressObj.cityZip)
     // street, zipcode
     return [addressObj.street, addressObj.cityZip];
   }
 
   async readFile(file, progress, error, option, index) {
+    //* * * * * * *//
+    //I have it set up so it will work if you take
+    // the shipping label picture with your phone sideways.
+    //* * * * * * *//
+    const base64File = await this.toBase64(file);
+    const rotated = await this.half(base64File);
     let shippingArgs = ["", ""];
     // https://github.com/naptha/tesseract.js
-    let result = await Tesseract.recognize(file, "eng", {
+    let result = await Tesseract.recognize(rotated, "eng", {//
       logger: m => {
         if (m.status == "recognizing text") {
           console.log(m);
@@ -313,22 +330,30 @@ export default class App extends Vue {
       }
     });
     let text = result.data.text;
+    console.log(text);
     shippingArgs = await this.readShipping(text);
-    if (shippingArgs.includes("")) {
-      const base64File = await this.toBase64(file);
-      const rotated = await this.rotate180(base64File);
-      //const rotated = file.rotate(180);
-      result = await Tesseract.recognize(rotated, "eng", {
-        logger: m => {
-          if (m.status == "recognizing text") {
-            console.log(m);
-            progress(50 + Math.floor(m.progress * 100) / 2);
-          }
-        }
-      });
-      text = result.data.text;
-      shippingArgs = await this.readShipping(text);
-    }
+    text="";
+    result=null;
+    // old code for if it unknowingly needs to be rotated 180
+    // (pictures from the internet seem to need this xtra step
+    // 4 some reason)
+
+    // if (shippingArgs.includes("")) {
+    //   //const rotated = file.rotate(180);
+    //   const base64File = await this.toBase64(file);
+    //   const rotated = await this.rotate180(base64File);
+    //   result = await Tesseract.recognize(rotated, "eng", {
+    //     logger: m => {
+    //       if (m.status == "recognizing text") {
+    //         console.log(m);
+    //         progress(50 + Math.floor(m.progress * 100) / 2);
+    //       }
+    //     }
+    //   });
+    //   text = result.data.text;
+    //   console.log(text);
+    //   shippingArgs = await this.readShipping(text);
+    // }
     progress(100);
     if (shippingArgs.includes("")) {
       error(
@@ -347,7 +372,22 @@ export default class App extends Vue {
       reader.onload = () => resolve(reader.result);
       reader.onerror = error => reject(error);
     });
-
+  async halfturn(src)
+  {
+    const img = new Image();
+    img.src = src;
+    await img.onload;
+    const canvas = document.createElement("canvas");
+    canvas.width = img.height;
+    canvas.height = img.width;
+    canvas.style.position = "absolute";
+    const ctx = canvas.getContext("2d");
+    ctx.translate(img.width / 2, img.height / 2);
+    ctx.rotate(3*Math.PI/2);
+    //ctx.drawImage(img, -img.width / 2, -img.height / 2);
+    ctx.drawImage(img, -img.height / 2, -img.width / 2);
+    return canvas.toDataURL();
+  }
   async rotate180(src) {
     const img = new Image();
     img.src = src;
