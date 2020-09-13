@@ -163,15 +163,27 @@ export async function addressToCoords(address, apiKey) {
   }
 }
 
-export async function validateAddress(address, apiKey) {
+export async function validateAddress(address, apiKey, boundingBox) {
   const geo = new openrouteservice.Geocode({
     api_key: apiKey
   });
-  const result = await geo.geocode({
-    text: address,
-    boundary_country: ["USA"],
-    boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 }
-  });
+  let result;
+  if (typeof boundingBox == "string") {
+    // it is an address string
+    result = await geo.geocode({
+      // look at orsGeocode.js... is there another way to make this more accurate?
+      text: address,
+      boundary_country: ["USA"]
+      //boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 }
+    });
+  } else {
+    // it is an array of coordinates
+    result = await geo.geocode({
+      text: address,
+      boundary_country: ["USA"],
+      boundary_circle: { lat_lng: [boundingBox[1], boundingBox[0]], radius: 80 }
+    });
+  }
   console.log("the result", result);
   const allResults = result.features.map(feature => {
     return feature.properties.label;
@@ -180,20 +192,6 @@ export async function validateAddress(address, apiKey) {
 }
 
 export async function calculateRoute(data) {
-  const dummy = {
-    "api-key": "5b3ce3597851110001cf6248dac90b49937d49c0a21afb76244b3647",
-    addresses: [
-      "300 Main Street, Santa Cruz, CA",
-      "Home/Work Soquel",
-      "True Olive Connection, Santa Cruz"
-    ],
-    currentLocation: [-121.044992, 39.0135808]
-  };
-  console.log(
-    "worth noting that the first should match the second: ",
-    data,
-    dummy
-  );
   // In the future: optimization: https://github.com/VROOM-Project/vroom/blob/master/docs/API.md#input
   await setupAPIKey(data["api-key"]);
   const coordinates = await toCoordinates(data);

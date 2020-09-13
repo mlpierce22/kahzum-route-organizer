@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <simple-modal v-model="showModal">
+    <simple-modal class="modal" v-model="showModal">
       <template slot="body">
         <a target="_blank" :href="mapsURL"
           >Link To Google Maps route from your location to your destinations</a
@@ -104,8 +104,11 @@
       type="submit"
       label="Validate Addresses"
       @click="validate()"
-      v-if="apiKey !== ''"
+      v-if="apiKey !== '' && !noLocation && !locationError"
     />
+    <div class="need-location" v-if="noLocation || locationError">
+      You must add your location before you can validate addresses
+    </div>
     <div class="need-location" v-if="noLocation || locationError">
       You must select your location before you are allowed to route
     </div>
@@ -175,7 +178,11 @@ export default class App extends Vue {
   }
 
   async validateUserLocation() {
-    this.addressOption = await validateAddress(this.userLocation, this.apiKey);
+    this.addressOption = await validateAddress(
+      this.userLocation,
+      this.apiKey,
+      this.userLocation
+    );
     this.isOptionRight = true;
     await new Promise((resolve, reject) => {
       this.promise["resolve"] = resolve;
@@ -197,7 +204,8 @@ export default class App extends Vue {
     for (let i = 0; i < this.addresses.length; ++i) {
       this.addressOption = await validateAddress(
         this.addresses[i],
-        this.apiKey
+        this.apiKey,
+        this.userLocation
       );
       this.isOptionRight = true;
       await new Promise((resolve, reject) => {
@@ -260,16 +268,17 @@ export default class App extends Vue {
             // const temp =
             //   line.slice(0, index) + line.slice(0, index + word.length + 1);
             const temp =
-              line.slice(0, index) + line.slice(index + word.length + 1, line.length);
+              line.slice(0, index) +
+              line.slice(index + word.length + 1, line.length);
             infoBits[count] = temp;
           }
         }
       });
     });
-    
+
     infoBits = infoBits.filter(infoBit => infoBit !== "" && infoBit !== "");
     // console.log("infobits at this point: ", infoBits);
-    console.log(infoBits)
+    console.log(infoBits);
     count = -1;
     // take only the furthest away (because this should also find the top address)
     const temp = [];
@@ -278,7 +287,7 @@ export default class App extends Vue {
       const streetRegex = /\d+[ ]([a-z]\.\s)?([a-z](\s)?)+\w\.?/i;
       const cityZipRegex = /(\w[ ]?)+[ CA ]\b\d{5}(?:-\d{4})?\b/i;
       if (line.match(streetRegex)) {
-        console.log("street", line)
+        console.log("street", line);
         const toformat1 = line.toLowerCase().indexOf("to: ");
         const toformat2 = line.toLowerCase().indexOf("to ");
         if (toformat1 >= 0) {
@@ -287,11 +296,11 @@ export default class App extends Vue {
         } else if (toformat2 >= 0) {
           const lineToPush = line.slice(toformat2 + "to ".length);
           temp.push({ type: "street", line: lineToPush });
-        } else{
-          temp.push({ type: "street", line: line })
+        } else {
+          temp.push({ type: "street", line: line });
         }
       } else if (line.match(cityZipRegex)) {
-        console.log("zip", line)
+        console.log("zip", line);
         temp.push({ type: "cityZip", line });
       }
     }
@@ -299,15 +308,15 @@ export default class App extends Vue {
       street: "",
       cityZip: ""
     };
-    console.log("temp", temp[0])
-    console.log("temp", temp[1])
+    console.log("temp", temp[0]);
+    console.log("temp", temp[1]);
     for (let i = temp.length - 1; i >= 0; --i) {
       if (addressObj[temp[i].type] == "") {
         addressObj[temp[i].type] = temp[i].line;
       }
     }
-    console.log("return", addressObj.street)
-    console.log("return", addressObj.cityZip)
+    console.log("return", addressObj.street);
+    console.log("return", addressObj.cityZip);
     // street, zipcode
     return [addressObj.street, addressObj.cityZip];
   }
@@ -321,7 +330,8 @@ export default class App extends Vue {
     const rotated = await this.half(base64File);
     let shippingArgs = ["", ""];
     // https://github.com/naptha/tesseract.js
-    let result = await Tesseract.recognize(rotated, "eng", {//
+    let result = await Tesseract.recognize(rotated, "eng", {
+      //
       logger: m => {
         if (m.status == "recognizing text") {
           console.log(m);
@@ -332,8 +342,8 @@ export default class App extends Vue {
     let text = result.data.text;
     console.log(text);
     shippingArgs = await this.readShipping(text);
-    text="";
-    result=null;
+    text = "";
+    result = null;
     // old code for if it unknowingly needs to be rotated 180
     // (pictures from the internet seem to need this xtra step
     // 4 some reason)
@@ -372,8 +382,7 @@ export default class App extends Vue {
       reader.onload = () => resolve(reader.result);
       reader.onerror = error => reject(error);
     });
-  async halfturn(src)
-  {
+  async halfturn(src) {
     const img = new Image();
     img.src = src;
     await img.onload;
@@ -383,7 +392,7 @@ export default class App extends Vue {
     canvas.style.position = "absolute";
     const ctx = canvas.getContext("2d");
     ctx.translate(img.width / 2, img.height / 2);
-    ctx.rotate(3*Math.PI/2);
+    ctx.rotate((3 * Math.PI) / 2);
     //ctx.drawImage(img, -img.width / 2, -img.height / 2);
     ctx.drawImage(img, -img.height / 2, -img.width / 2);
     return canvas.toDataURL();
@@ -463,6 +472,10 @@ export default class App extends Vue {
   margin-top: 60px;
   display: flex;
   flex-direction: column;
+
+  .vsm-modal {
+    margin-top: 80vh;
+  }
 
   .camera-modal-container {
     position: absolute;
