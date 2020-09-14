@@ -11,7 +11,7 @@ let matrix;
 let coordinates;
 
 async function setupAPIKey(apiKey) {
-  console.log("registering api key!");
+  // console.log("registering api key!");
   directions = new openrouteservice.Directions({
     api_key: apiKey
   });
@@ -21,37 +21,46 @@ async function setupAPIKey(apiKey) {
   matrix = new openrouteservice.Matrix({
     api_key: apiKey
   });
-  console.log("API key has successfully been applied");
+  // console.log("API key has successfully been applied");
 }
 
-async function toCoordinates(data) {
-  console.log("to coordinates");
+async function toCoordinates(data, boundingBox) {
   const coords = [];
+  let localCoord;
+  // if the location is an address, convert it to coords
+  if (typeof boundingBox == "string") {
+    localCoord = await geocode.geocode({
+      // look at orsGeocode.js... is there another way to make this more accurate?
+      text: boundingBox,
+      boundary_country: ["USA"]
+      //boundary_circle: { lat_lng: [localCoord[1], localCoord[0]], radius: 80 }
+    });
+  } else {
+    localCoord = boundingBox;
+  }
   for (let i = 0; i < data.addresses.length; ++i) {
-    console.log("starting, i=" + i);
+    // console.log("starting, i=" + i);
     const result = await geocode.geocode({
+      // look at orsGeocode.js... is there another way to make this more accurate?
       text: data.addresses[i],
-      // Where do we get these from?? current location??
-      //boundary_circle: { lat_lng: [49.412388, 8.681247], radius: 50 },
-      boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 },
-      //boundary_bbox: [[49.260929, 8.40063], [49.504102, 8.941707]],
-      boundary_country: ["US"]
+      boundary_country: ["USA"],
+      boundary_circle: { lat_lng: [localCoord[1], localCoord[0]], radius: 80 }
     });
     try {
       // See response format at bottom: Geocode Response
-      console.log("response", result.features[0].geometry.coordinates);
+      // console.log("response", result.features[0].geometry.coordinates);
       coords.push(result.features[0].geometry.coordinates);
     } catch (err) {
       const str = "An error occured: " + err;
-      console.log(str);
+      console.warn(str);
     }
-    console.log("finished, i=" + i);
+    // console.log("finished, i=" + i);
   }
   return coords;
 }
 
 async function getMatrix(coords) {
-  console.log("hopefully this is an array of arrays", coords);
+  // console.log("hopefully this is an array of arrays", coords);
   const result = await matrix.calculate({
     locations: coords,
     profile: "driving-car",
@@ -59,23 +68,17 @@ async function getMatrix(coords) {
     destinations: ["all"]
   });
   try {
-    console.log("response matrix:", result);
+    // console.log("response matrix:", result);
     return result;
   } catch (err) {
     const str = "An error occured: " + err;
-    console.log(str);
+    console.warn(str);
     return null;
   }
 }
 async function sortMatrix(matrix) {
   const matrixDestinations = [...matrix.destinations];
   const matrixDurations = [...matrix.durations[0]];
-
-  console.log(
-    "the initial dest, duration",
-    matrixDestinations,
-    matrixDurations
-  );
   // Courtesy of stack overflow: https://stackoverflow.com/a/11499391
   const matrixObjects = [];
   for (let j = 0; j < matrixDestinations.length; j++) {
@@ -84,22 +87,22 @@ async function sortMatrix(matrix) {
       destination: matrixDestinations[j]
     });
   }
-  console.log("pre sort, matrix objects", matrixObjects);
+  // console.log("pre sort, matrix objects", matrixObjects);
   matrixObjects.sort(function(a, b) {
     return a.duration < b.duration ? -1 : a.duration == b.duration ? 0 : 1;
   });
 
-  console.log("post sort, matrix objects", matrixObjects);
+  // console.log("post sort, matrix objects", matrixObjects);
 
   for (let k = 0; k < matrixObjects.length; k++) {
     matrixDestinations[k] = matrixObjects[k].destination;
     matrixDurations[k] = matrixObjects[k].duration;
   }
-  console.log(
-    "the final (sorted by duration) dest, duration",
-    matrixDestinations,
-    matrixDurations
-  );
+  // console.log(
+  //   "the final (sorted by duration) dest, duration",
+  //   matrixDestinations,
+  //   matrixDurations
+  // );
   // matrix.destinations = matrixDestinations;
   // matrix.durations[0] = matrixDurations;
   return matrixObjects;
@@ -148,17 +151,18 @@ export async function addressToCoords(address, apiKey) {
     text: address,
     // Where do we get these from?? current location??
     //boundary_circle: { lat_lng: [49.412388, 8.681247], radius: 50 },
-    boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 },
+    // no bounding box here because this is used for the users current location
+    // boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 },
     //boundary_bbox: [[49.260929, 8.40063], [49.504102, 8.941707]],
     boundary_country: ["US"]
   });
   try {
     // See response format at bottom: Geocode Response
-    console.log("response", result.features[0].geometry.coordinates);
+    // console.log("response", result.features[0].geometry.coordinates);
     return result.features[0].geometry.coordinates;
   } catch (err) {
     const str = "An error occured: " + err;
-    console.log(str);
+    console.warn(str);
     return null;
   }
 }
@@ -169,12 +173,13 @@ export async function validateAddress(address, apiKey, boundingBox) {
   });
   let result;
   if (typeof boundingBox == "string") {
+    const coords = await addressToCoords(boundingBox, apiKey);
     // it is an address string
     result = await geo.geocode({
       // look at orsGeocode.js... is there another way to make this more accurate?
       text: address,
-      boundary_country: ["USA"]
-      //boundary_circle: { lat_lng: [36.967259, -122.035505], radius: 80 }
+      boundary_country: ["USA"],
+      boundary_circle: { lat_lng: [coords[1], coords[0]], radius: 80 }
     });
   } else {
     // it is an array of coordinates
@@ -184,7 +189,6 @@ export async function validateAddress(address, apiKey, boundingBox) {
       boundary_circle: { lat_lng: [boundingBox[1], boundingBox[0]], radius: 80 }
     });
   }
-  console.log("the result", result);
   const allResults = result.features.map(feature => {
     return feature.properties.label;
   });
@@ -194,7 +198,7 @@ export async function validateAddress(address, apiKey, boundingBox) {
 export async function calculateRoute(data) {
   // In the future: optimization: https://github.com/VROOM-Project/vroom/blob/master/docs/API.md#input
   await setupAPIKey(data["api-key"]);
-  const coordinates = await toCoordinates(data);
+  const coordinates = await toCoordinates(data, data.currentLocation);
   coordinates.unshift(data.currentLocation); // add the current location at the beginning of the array
   const matrix = await getMatrix(coordinates);
   const sortedMatrix = await sortMatrix(matrix);

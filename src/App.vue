@@ -278,7 +278,7 @@ export default class App extends Vue {
 
     infoBits = infoBits.filter(infoBit => infoBit !== "" && infoBit !== "");
     // console.log("infobits at this point: ", infoBits);
-    console.log(infoBits);
+    // console.log(infoBits);
     count = -1;
     // take only the furthest away (because this should also find the top address)
     const temp = [];
@@ -287,7 +287,7 @@ export default class App extends Vue {
       const streetRegex = /\d+[ ]([a-z]\.\s)?([a-z](\s)?)+\w\.?/i;
       const cityZipRegex = /(\w[ ]?)+[ CA ]\b\d{5}(?:-\d{4})?\b/i;
       if (line.match(streetRegex)) {
-        console.log("street", line);
+        // console.log("street", line);
         const toformat1 = line.toLowerCase().indexOf("to: ");
         const toformat2 = line.toLowerCase().indexOf("to ");
         if (toformat1 >= 0) {
@@ -300,7 +300,7 @@ export default class App extends Vue {
           temp.push({ type: "street", line: line });
         }
       } else if (line.match(cityZipRegex)) {
-        console.log("zip", line);
+        // console.log("zip", line);
         temp.push({ type: "cityZip", line });
       }
     }
@@ -308,15 +308,15 @@ export default class App extends Vue {
       street: "",
       cityZip: ""
     };
-    console.log("temp", temp[0]);
-    console.log("temp", temp[1]);
+    // console.log("temp", temp[0]);
+    // console.log("temp", temp[1]);
     for (let i = temp.length - 1; i >= 0; --i) {
       if (addressObj[temp[i].type] == "") {
         addressObj[temp[i].type] = temp[i].line;
       }
     }
-    console.log("return", addressObj.street);
-    console.log("return", addressObj.cityZip);
+    // console.log("return", addressObj.street);
+    // console.log("return", addressObj.cityZip);
     // street, zipcode
     return [addressObj.street, addressObj.cityZip];
   }
@@ -340,7 +340,7 @@ export default class App extends Vue {
       }
     });
     let text = result.data.text;
-    console.log(text);
+    // console.log(text);
     shippingArgs = await this.readShipping(text);
     text = "";
     result = null;
