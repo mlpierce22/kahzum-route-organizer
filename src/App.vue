@@ -327,7 +327,7 @@ export default class App extends Vue {
     // the shipping label picture with your phone sideways.
     //* * * * * * *//
     const base64File = await this.toBase64(file);
-    const rotated = await this.half(base64File);
+    const rotated = await this.halfTurn(base64File);
     let shippingArgs = ["", ""];
     // https://github.com/naptha/tesseract.js
     let result = await Tesseract.recognize(rotated, "eng", {
@@ -382,7 +382,8 @@ export default class App extends Vue {
       reader.onload = () => resolve(reader.result);
       reader.onerror = error => reject(error);
     });
-  async halfturn(src) {
+
+  async halfTurn(src) {
     const img = new Image();
     img.src = src;
     await img.onload;
