@@ -36,40 +36,48 @@ def request_distance_data(locations):
         # need to improve in future
         return respondJson['features'][0]["geometry"]["coordinates"]
     
-    def get_travel_time(geocode1, geocode2):
+    def get_travel_time(geocodeList):
         # prepare request
-        template = 'https://api.openrouteservice.org/v2/directions/driving-car?api_key='  + API_KEY
-        start = '&start=' + str(geocode1[0]) +','+ str(geocode1[1])
-        end = '&end=' + str(geocode2[0]) +',' + str(geocode2[1])
+        #XXX need change to send an array of addresses, including starting location (could be arbitrary for now)
+        template = 'https://api.openrouteservice.org/v2/matrix/driving-car'
+        #XXX REPLACE: start = '&start=' + str(geocode1[0]) +','+ str(geocode1[1])
+        #XXX REPLACE: end = '&end=' + str(geocode2[0]) +',' + str(geocode2[1])
+        headers = {"Authorization": "5b3ce3597851110001cf6248fd84af22082e49dd8ae43e584fdefd54"} #XXX API key
+        body = {"locations": geocodeList}#XXX locations matrix
 
         # print(template+start+end)
         #send request
-        r = requests.get(template + start + end)
+        r = requests.post(template, json = body, headers = headers) #XXX change get to post to work with matrix
         print("test: status code is " + str(r.status_code))
         if(r.status_code!=200):
             # print(r.text)
             return 10000000 
         #read results
-        respondJson = json.loads(r.text)
+        respondJson = json.loads(r.text) #XXX read the matrix
         # print(json.dumps(respondJson))
 
-        if(respondJson):
+        if(respondJson): #XXX need to change how we read from the response. we want "durations" to be saved in a matrix? refer to docs
             if(respondJson['features'][0]['properties']['summary'] == {}):
                 # this happens when the starting location is the end location
                 return 0
-            return int(respondJson['features'][0]['properties']['summary']['duration'])
+            return int(respondJson['durations'])
         else:
             print(json.dumps(respondJson))
-            return 10000000 
+            return 10000000 #XXX error
 
     print("requesting geocodes...")
     geocodeList = []
-    for location in locations:
-        geocodeList.append(get_geocode(location['pick-up-location']))
+    #geocodeStr = "" #XXX currently dont see how the string helps. will be trying to use geocodeList instead.
+    #i = 0
+    for location in locations: #XXX fixed to now create a string of all locations
+        #if(i != 0):
+        #    geocodeStr += ","
+        geocodeList.append(get_geocode(location['pick-up-location'])) #XXX calling get_geocode function
+        #geocodeStr += "[" str(geoList[i++]) "],"
         geocodeList.append(get_geocode(location['drop-off-location']))
-    
+        #geocodeStr += "[" str(geoList[i++]) "]"
 
-    data = {}
+    data = {} #XXX initialization of object for googleOR
 
     # construct pickups-deliveries table
     data['pickups_deliveries'] = []
@@ -80,16 +88,18 @@ def request_distance_data(locations):
     print("requesting distances...")
     # construct adjacency matrix
     data['distance_matrix'] = []
-    for geocode1 in geocodeList:
-        data['distance_matrix'].append([])
-        for geocode2 in geocodeList:
-            data['distance_matrix'][-1].append(get_travel_time(geocode1,geocode2))
-            time.sleep(1.5) # open route service has a 40 time/min request cap
+    data['distance_matrix'] = (get_travel_time(geocodeList)) #XXX calling get travel time, needs to input matrix
+    #for geocode1 in geocodeList: #XXX double loop to create matrix of all times traveled. Instead do one single call of a double matrix
+        #XXX data['distance_matrix'].append([])
+        #for geocode2 in geocodeList:
+
+            #time.sleep(1.5) # open route service has a 40 time/min request cap #XXX can be fixed when using matrices
 
     data['num_vehicles'] = 1
     data['depot'] = 0
 
     return data
+    
 
 def print_solution(data, manager, routing, solution):
     """Prints solution on console."""
