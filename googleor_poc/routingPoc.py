@@ -76,7 +76,6 @@ def request_distance_data(locations):
 
     for i in range(0,len(geocodeList),2):
         data['pickups_deliveries'] .append([i,i+1])
-        time.sleep(1.5) # open route service has a 40 time/min request cap
     
     print("requesting distances...")
     # construct adjacency matrix
@@ -85,7 +84,7 @@ def request_distance_data(locations):
         data['distance_matrix'].append([])
         for geocode2 in geocodeList:
             data['distance_matrix'][-1].append(get_travel_time(geocode1,geocode2))
-            # time.sleep(1.5) # open route service has a 40 time/min request cap
+            time.sleep(1.5) # open route service has a 40 time/min request cap
 
     data['num_vehicles'] = 1
     data['depot'] = 0
