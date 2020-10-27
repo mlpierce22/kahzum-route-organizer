@@ -27,7 +27,7 @@ def request_distance_data(locations):
         
         #send request
         r = requests.get(template + text)
-        # print("test: status code is " + str(r.status_code))
+        print("test: status code is " + str(r.status_code))
 
         # read results
         respondJson = json.loads(r.text)
@@ -40,8 +40,6 @@ def request_distance_data(locations):
         # prepare request
         #XXX need change to send an array of addresses, including starting location (could be arbitrary for now)
         template = 'https://api.openrouteservice.org/v2/matrix/driving-car'
-        #XXX REPLACE: start = '&start=' + str(geocode1[0]) +','+ str(geocode1[1])
-        #XXX REPLACE: end = '&end=' + str(geocode2[0]) +',' + str(geocode2[1])
         headers = {"Authorization": "5b3ce3597851110001cf6248fd84af22082e49dd8ae43e584fdefd54"} #XXX API key
         body = {"locations": geocodeList}#XXX locations matrix
 
@@ -55,27 +53,17 @@ def request_distance_data(locations):
         #read results
         respondJson = json.loads(r.text) #XXX read the matrix
         # print(json.dumps(respondJson))
-
         if(respondJson): #XXX need to change how we read from the response. we want "durations" to be saved in a matrix? refer to docs
-            if(respondJson['features'][0]['properties']['summary'] == {}):
-                # this happens when the starting location is the end location
-                return 0
-            return int(respondJson['durations'])
+            return respondJson['durations'] #XXX may need fixing!\
         else:
             print(json.dumps(respondJson))
             return 10000000 #XXX error
 
     print("requesting geocodes...")
     geocodeList = []
-    #geocodeStr = "" #XXX currently dont see how the string helps. will be trying to use geocodeList instead.
-    #i = 0
     for location in locations: #XXX fixed to now create a string of all locations
-        #if(i != 0):
-        #    geocodeStr += ","
         geocodeList.append(get_geocode(location['pick-up-location'])) #XXX calling get_geocode function
-        #geocodeStr += "[" str(geoList[i++]) "],"
         geocodeList.append(get_geocode(location['drop-off-location']))
-        #geocodeStr += "[" str(geoList[i++]) "]"
 
     data = {} #XXX initialization of object for googleOR
 
@@ -99,7 +87,7 @@ def request_distance_data(locations):
     data['depot'] = 0
 
     return data
-    
+
 
 def print_solution(data, manager, routing, solution):
     """Prints solution on console."""
@@ -125,12 +113,11 @@ def main():
     with open("cred.json") as file:
         API_KEY = json.load(file)['API_KEY']
 
+    destinationlist = get_destination_list()
+    data = request_distance_data(destinationlist)
 
-    # destinationlist = get_destination_list()
-    # data = request_distance_data(destinationlist)
-
-    with open('temp.json') as file:
-        data = json.load(file)
+    #with open('temp.json') as file:
+    #    data = json.load(file)
 
     # print(json.dumps(data))
     # exit()

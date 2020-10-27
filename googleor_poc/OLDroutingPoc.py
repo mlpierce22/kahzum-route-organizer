@@ -27,7 +27,7 @@ def request_distance_data(locations):
         
         #send request
         r = requests.get(template + text)
-        # print("test: status code is " + str(r.status_code))
+        print("test: status code is " + str(r.status_code))
 
         # read results
         respondJson = json.loads(r.text)
@@ -116,11 +116,11 @@ def main():
         API_KEY = json.load(file)['API_KEY']
 
 
-    # destinationlist = get_destination_list()
-    # data = request_distance_data(destinationlist)
+    destinationlist = get_destination_list()
+    data = request_distance_data(destinationlist)
 
-    with open('temp.json') as file:
-        data = json.load(file)
+    #with open('temp.json') as file:
+    #    data = json.load(file)
 
     # print(json.dumps(data))
     # exit()
