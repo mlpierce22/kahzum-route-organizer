@@ -40,7 +40,7 @@ def request_distance_data(locations):
         # prepare request
         #XXX need change to send an array of addresses, including starting location (could be arbitrary for now)
         template = 'https://api.openrouteservice.org/v2/matrix/driving-car'
-        headers = {"Authorization": "5b3ce3597851110001cf6248fd84af22082e49dd8ae43e584fdefd54"} #XXX API key
+        headers = {"Authorization": API_KEY} #XXX API key
         body = {"locations": geocodeList}#XXX locations matrix
 
         # print(template+start+end)
